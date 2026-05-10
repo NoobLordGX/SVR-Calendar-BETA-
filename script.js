@@ -2,16 +2,6 @@
 // BANCO DE DADOS DE PREVISÕES (Adicione novos meses e anos aqui quando quiser!)
 // =========================================================================
 const bancoDeDadosPrevisoes = `
-2025(09/12)
-10-N2,SVR,TOR1
-15-N3,SVR,HAIL1
-
-2026(04/12)
-1-T
-2-N1
-10-N2,SVR
-15-N3,SVR,HAIL2
-
 2026(05/12)
 1-N3
 2-N1
@@ -29,12 +19,6 @@ const bancoDeDadosPrevisoes = `
 17-N1,SVR
 18-N2,SVR
 19-N2,SVR
-
-2026(06/12)
-1-N1
-2-N1
-5-N2,SVR,TOR1
-12-N4,HAIL2,TOR2
 `;
 // =========================================================================
 
