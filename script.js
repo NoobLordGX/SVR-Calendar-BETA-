@@ -2,6 +2,99 @@
 // BANCO DE DADOS DE PREVISÕES (Adicione novos meses e anos aqui quando quiser!)
 // =========================================================================
 const bancoDeDadosPrevisoes = `
+2026(01/12)
+5-N1
+6-N1
+7-N1
+8-N1
+9-N2
+10-N1
+11-N1
+13-N1
+14-N1
+15-N1
+17-N1
+18-N1
+20-T
+21-T
+22-T
+23-N1
+24-T
+25-N1
+28-N1
+29-N1
+30-N1
+31-N2
+2026(02/12)
+1-N2
+3-N1
+4-N1
+6-N1
+7-N2
+8-N1
+10-N1
+12-N1
+13-N1
+14-N1
+15-N1
+16-N1
+17-N1
+18-N1
+19-N2
+21-N1
+23-N1
+24-N1
+25-N1
+26-N1
+27-N1
+2026(03/12)
+3-T
+4-N1
+6-N2
+8-N1
+9-T
+13-N1
+14-N1
+15-N1
+16-N1
+17-N1
+18-N1
+20-N1
+21-N2
+22-N1
+23-N2
+24-N1
+25-N1
+27-T
+28-N1
+29-N1
+30-N1
+31-N1
+2026(04/12)
+3-N1
+4-N1
+5-N1
+6-N2
+7-N2
+11-N1
+12-N1
+13-N1
+14-N2
+15-N1
+16-N1
+17-N1
+18-N1
+19-N1
+22-T
+23-N2
+24-N1
+25-N1
+26-N1
+27-N1
+28-N1
+29-N2
+30-N1
+
 2026(05/12)
 1-N3
 2-N1
@@ -16,11 +109,8 @@ const bancoDeDadosPrevisoes = `
 11-T
 12-T
 - FUTURO -
-15-N2,SVR,HAIL1
-16-N2,SVR,HAIL2
-17-N1,SVR
-18-N2,SVR
-19-N2,SVR
+16-N2,SVR,HAIL1
+17-N2,SVR,HAIL1
 `;
 // =========================================================================
 
@@ -32,6 +122,7 @@ const diaReal = hojeReal.getDate();
 let anoAtual = anoReal;
 let mesAtual = mesReal;
 let meuGrafico = null; 
+let meuGraficoAnual = null; // Variável para armazenar o gráfico de barras anual
 
 document.addEventListener("DOMContentLoaded", function () {
   const selectMes = document.getElementById("select-mes");
@@ -205,6 +296,9 @@ function renderizarCalendario(ano, mes) {
   }
 
   atualizarGraficoTendencia(listaDiasRotulos, listaValoresGrafico);
+  
+  // GERA OU ATUALIZA O SEGUNDO GRÁFICO BASEADO NO ANO ATUAL
+  atualizarGraficoAnualSeveridade(ano);
 }
 
 function atualizarGraficoTendencia(rotulos, valores) {
@@ -214,7 +308,6 @@ function atualizarGraficoTendencia(rotulos, valores) {
     meuGrafico.destroy();
   }
 
-  // PLUGIN 1: Faixas de Risco
   const pluginFundoColorido = {
     id: 'fundoColoridoPorRisco',
     beforeDraw: (chart) => {
@@ -238,27 +331,21 @@ function atualizarGraficoTendencia(rotulos, valores) {
     }
   };
 
-  // PLUGIN 2: Linha Vertical de Hoje (Separador de Passado/Futuro)
   const pluginLinhaHoje = {
     id: 'linhaVerticalHoje',
     afterDraw: (chart) => {
-      // Só desenha se estivermos visualizando o mês e ano atual real
       if (anoAtual === anoReal && mesAtual === mesReal) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-        
-        // Localiza a posição X do dia de hoje no gráfico
         const xPos = x.getPixelForValue(`Dia ${diaReal}`);
-
         ctx.save();
         ctx.beginPath();
-        ctx.setLineDash([5, 5]); // Define o padrão pontilhado (5px traço, 5px espaço)
+        ctx.setLineDash([5, 5]); 
         ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)'; // Cor da linha
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)'; 
         ctx.moveTo(xPos, top);
         ctx.lineTo(xPos, bottom);
         ctx.stroke();
 
-        // Pequeno rótulo opcional "NOW" no topo da linha
         ctx.fillStyle = '#000';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
@@ -288,9 +375,7 @@ function atualizarGraficoTendencia(rotulos, valores) {
     },
     options: {
       responsive: true,
-      layout: {
-        padding: { top: 15 } // Espaço extra para o texto "TODAY" não ser cortado
-      },
+      layout: { padding: { top: 15 } },
       scales: {
         y: {
           min: 0,
@@ -315,5 +400,86 @@ function atualizarGraficoTendencia(rotulos, valores) {
       }
     },
     plugins: [pluginFundoColorido, pluginLinhaHoje]
+  });
+}
+
+// NOVA FUNÇÃO: Calcula os dados acumulados por mês e desenha o gráfico de barras
+function atualizarGraficoAnualSeveridade(ano) {
+  const ctxAnual = document.getElementById('graficoAnualContagem').getContext('2d');
+
+  if (meuGraficoAnual) {
+    meuGraficoAnual.destroy();
+  }
+
+  // Vetores para guardar a contagem final de cada um dos 12 meses
+  const contagemN2 = Array(12).fill(0);
+  const contagemN3 = Array(12).fill(0);
+  const contagemN4 = Array(12).fill(0);
+
+  // Varre os 12 meses do ano processando o banco de dados
+  for (let m = 0; m < 12; m++) {
+    const dadosMes = parsePrevisoesParaMes(ano, m);
+    for (const dia in dadosMes) {
+      if (dadosMes[dia].severidade === 'nivel-2') contagemN2[m]++;
+      if (dadosMes[dia].severidade === 'nivel-3') contagemN3[m]++;
+      if (dadosMes[dia].severidade === 'nivel-4') contagemN4[m]++;
+    }
+  }
+
+  const mesesLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  meuGraficoAnual = new Chart(ctxAnual, {
+    type: 'bar',
+    data: {
+      labels: mesesLabels,
+      datasets: [
+        {
+          label: 'ENH (Nível 2)',
+          data: contagemN2,
+          backgroundColor: '#ff9900', // Laranja oficial
+          borderColor: '#000000',
+          borderWidth: 1.5
+        },
+        {
+          label: 'MDT (Nível 3)',
+          data: contagemN3,
+          backgroundColor: '#ff4d4d', // Vermelho oficial
+          borderColor: '#000000',
+          borderWidth: 1.5
+        },
+        {
+          label: 'HIGH (Nível 4)',
+          data: contagemN4,
+          backgroundColor: '#f4b0f4', // Rosa oficial
+          borderColor: '#000000',
+          borderWidth: 1.5
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          stacked: true, // Empilha as barras para economizar espaço horizontal
+          grid: { display: false }
+        },
+        y: {
+          stacked: true, // Empilha verticalmente para mostrar o total combinado de dias severos
+          min: 0,
+          ticks: {
+            stepSize: 1, // Exibe contagem de 1 em 1 dia inteiro
+            font: { weight: 'bold' }
+          },
+          grid: { color: '#cccccc' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true, // Ativa a legenda para sabermos qual cor representa qual nível
+          position: 'top',
+          labels: { font: { family: 'Arial', size: 11, weight: 'bold' } }
+        }
+      }
+    }
   });
 }
