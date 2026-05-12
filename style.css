@@ -24,7 +24,6 @@ body {
   padding-top: 60px;
 }
 
-/* Estilo da barra de seleção */
 .navegacao-calendario {
   display: flex;
   align-items: center;
@@ -32,7 +31,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* Customização dos Dropdowns de Mês e Ano */
 .dropdown-nav {
   font-family: 'Arial', sans-serif;
   font-size: 24px;
@@ -48,7 +46,6 @@ body {
   background-color: #f0f0f0;
 }
 
-/* Grid do Calendário */
 .grid-calendario {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -96,7 +93,6 @@ body {
 .nivel-3-forte { background-color: #ff4d4d; }
 .nivel-4 { background-color: #f4b0f4; } 
 
-/* Posicionamento dos ícones gerados */
 .container-icones {
   position: absolute;
   top: 5px;   
@@ -113,11 +109,6 @@ body {
   object-fit: contain;
 }
 
-.icone-svr {
-  filter: none; 
-}
-
-/* Filtros de Cores dos Ícones */
 .icone-temp.baixo {
   filter: brightness(0) invert(100%) drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.5));
 }
@@ -126,7 +117,6 @@ body {
   filter: brightness(0);
 }
 
-/* Legenda */
 .potencial-lista {
   display: flex;
   flex-direction: column;
@@ -173,20 +163,17 @@ body {
   display: inline-block;
 }
 
-/* Destaque do dia atual (borda preta interna) */
 .dia.hoje {
   outline: 3px solid #000000;
   outline-offset: -3px;
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Caixa do Gráfico de Tendência */
 .grafico-container {
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.05);
   border-radius: 4px;
 }
 
-/* Ajustes para telas menores (Responsividade básica) */
 @media (max-width: 900px) {
   .pagina-container {
     flex-direction: column;
