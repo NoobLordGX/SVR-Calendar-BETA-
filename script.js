@@ -14,6 +14,7 @@ const bancoDeDadosPrevisoes = `
 9-N1
 10-T
 11-T
+12-T
 - FUTURO -
 15-N1,SVR
 16-N2,SVR,HAIL1
