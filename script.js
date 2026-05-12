@@ -16,45 +16,38 @@ const bancoDeDadosPrevisoes = `
 11-T
 12-T
 - FUTURO -
-15-N1,SVR
-16-N2,SVR,HAIL1
-17-N2,SVR,HAIL2
-18-N2,SVR,HAIL1
+15-N2,SVR,HAIL1
+16-N2,SVR,HAIL2
+17-N1,SVR
+18-N2,SVR
 19-N2,SVR
 `;
 // =========================================================================
 
-// Data real de hoje no sistema
 const hojeReal = new Date();
 const anoReal = hojeReal.getFullYear();
 const mesReal = hojeReal.getMonth();
 const diaReal = hojeReal.getDate();
 
-// Inicializamos o calendário no ano e mês correspondentes à data atual real
 let anoAtual = anoReal;
 let mesAtual = mesReal;
+let meuGrafico = null; 
 
 document.addEventListener("DOMContentLoaded", function () {
-  
   const selectMes = document.getElementById("select-mes");
   const selectAno = document.getElementById("select-ano");
 
-  // 1. GERA OS ANOS DINAMICAMENTE DE 2025 ATÉ O ANO ATUAL
   const anoInicial = 2025;
   for (let ano = anoInicial; ano <= anoReal; ano++) {
     const opcao = document.createElement("option");
     opcao.value = ano;
     opcao.text = ano;
-    if (ano === anoAtual) {
-      opcao.selected = true;
-    }
+    if (ano === anoAtual) opcao.selected = true;
     selectAno.appendChild(opcao);
   }
 
-  // Alinha o dropdown de mês com a data inicial real
   selectMes.value = mesAtual;
 
-  // Escuta as alterações nos seletores de Mês e Ano
   selectMes.addEventListener("change", function(e) {
     mesAtual = parseInt(e.target.value);
     renderizarCalendario(anoAtual, mesAtual);
@@ -65,15 +58,13 @@ document.addEventListener("DOMContentLoaded", function () {
     renderizarCalendario(anoAtual, mesAtual);
   });
 
-  // Renderizar o calendário inicial
   renderizarCalendario(anoAtual, mesAtual);
 });
 
-// Busca no banco de dados de texto as configurações de severidade de um mês/ano específico
 function parsePrevisoesParaMes(ano, mes) {
   const dadosClimaticos = {};
   const numeroMesFormatado = String(mes + 1).padStart(2, '0');
-  const chaveMes = `${ano}(${numeroMesFormatado}/12)`; // Ex: "2026(05/12)"
+  const chaveMes = `${ano}(${numeroMesFormatado}/12)`; 
 
   const linhas = bancoDeDadosPrevisoes.trim().split("\n");
   let lendoMesCorreto = false;
@@ -104,13 +95,14 @@ function parsePrevisoesParaMes(ano, mes) {
       let temSvr = false;
       let nivelHail = null;
       let nivelTor = null;
+      let valorGrafico = 1; 
 
       atributos.forEach(attr => {
-        if (attr === "T") severidade = "temp-verde";
-        else if (attr === "N1") severidade = "nivel-1";
-        else if (attr === "N2") severidade = "nivel-2";
-        else if (attr === "N3") severidade = "nivel-3";
-        else if (attr === "N4") severidade = "nivel-4";
+        if (attr === "T") { severidade = "temp-verde"; valorGrafico = 1; }
+        else if (attr === "N1") { severidade = "nivel-1"; valorGrafico = 2; }
+        else if (attr === "N2") { severidade = "nivel-2"; valorGrafico = 3; }
+        else if (attr === "N3") { severidade = "nivel-3"; valorGrafico = 4; }
+        else if (attr === "N4") { severidade = "nivel-4"; valorGrafico = 5; }
         else if (attr === "SVR") temSvr = true;
         else if (attr === "HAIL1") nivelHail = "baixo";
         else if (attr === "HAIL2") nivelHail = "alto";
@@ -118,47 +110,46 @@ function parsePrevisoesParaMes(ano, mes) {
         else if (attr === "TOR2") nivelTor = "alto";
       });
 
-      dadosClimaticos[diaNum] = { severidade, temSvr, nivelHail, nivelTor };
+      dadosClimaticos[diaNum] = { severidade, temSvr, nivelHail, nivelTor, valorGrafico };
     }
   }
 
   return dadosClimaticos;
 }
 
-// Renderiza os dias e estilos dinamicamente
 function renderizarCalendario(ano, mes) {
   const container = document.getElementById("container-dias");
-  container.innerHTML = ""; // Limpa a grade anterior
+  container.innerHTML = ""; 
 
   const previsoesDoMes = parsePrevisoesParaMes(ano, mes);
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay(); 
+  const totalDiasNoMes = new Date(ano, mes + 1, 0).getDate(); 
 
-  // Descobrir as variáveis de calendário do mês selecionado
-  const primeiroDiaSemana = new Date(ano, mes, 1).getDay(); // Qual dia da semana começa o mês
-  const totalDiasNoMes = new Date(ano, mes + 1, 0).getDate(); // Quantos dias tem o mês
+  const listaDiasRotulos = [];
+  const listaValoresGrafico = [];
 
-  // 1. Cria os espaços vazios iniciais cinzas
   for (let i = 0; i < primeiroDiaSemana; i++) {
     const divVazia = document.createElement("div");
     divVazia.className = "dia vazio";
     container.appendChild(divVazia);
   }
 
-  // 2. Cria os dias válidos do mês
   for (let dia = 1; dia <= totalDiasNoMes; dia++) {
     const divDia = document.createElement("div");
     divDia.className = "dia";
     divDia.innerText = dia;
 
-    const mesFormatado = String(mes + 1).padStart(2, '0');
-    const diaFormatado = String(dia).padStart(2, '0');
-    divDia.setAttribute("data-date", `${ano}-${mesFormatado}-${diaFormatado}`);
-
-    // Destaca em preto o dia de hoje se o usuário estiver vendo o mês/ano atual real
     if (ano === anoReal && mes === mesReal && dia === diaReal) {
       divDia.classList.add("hoje");
     }
 
-    // Aplica as cores de fundo e monta os ícones se existirem previsões para o dia
+    listaDiasRotulos.push(`Dia ${dia}`);
+    if (previsoesDoMes[dia]) {
+      listaValoresGrafico.push(previsoesDoMes[dia].valorGrafico);
+    } else {
+      listaValoresGrafico.push(0); 
+    }
+
     if (previsoesDoMes[dia]) {
       const config = previsoesDoMes[dia];
       const possuiIcones = config.temSvr || config.nivelHail || config.nivelTor;
@@ -168,15 +159,12 @@ function renderizarCalendario(ano, mes) {
         classeCor = "nivel-1-claro";
       }
 
-      if (classeCor) {
-        divDia.classList.add(classeCor);
-      }
+      if (classeCor) divDia.classList.add(classeCor);
 
       if (possuiIcones) {
         const containerIcones = document.createElement("div");
         containerIcones.className = "container-icones";
 
-        // Ícone SVR
         if (config.temSvr) {
           const imgSvr = document.createElement("img");
           imgSvr.src = "https://cdn-icons-png.flaticon.com/512/564/564619.png";
@@ -185,7 +173,6 @@ function renderizarCalendario(ano, mes) {
           containerIcones.appendChild(imgSvr);
         }
 
-        // Ícone HAIL
         if (config.nivelHail) {
           const imgHail = document.createElement("img");
           imgHail.src = "https://cdn-icons-png.flaticon.com/512/12446/12446252.png";
@@ -194,7 +181,6 @@ function renderizarCalendario(ano, mes) {
           containerIcones.appendChild(imgHail);
         }
 
-        // Ícone TOR
         if (config.nivelTor) {
           const imgTor = document.createElement("img");
           imgTor.src = "https://cdn-icons-png.flaticon.com/512/6421/6421009.png";
@@ -210,13 +196,124 @@ function renderizarCalendario(ano, mes) {
     container.appendChild(divDia);
   }
 
-  // 3. Preenche os blocos vazios finais cinzas para manter o design consistente de 6 semanas (42 blocos)
   const totalCelulasAtuais = primeiroDiaSemana + totalDiasNoMes;
   const celulasFaltantes = 42 - totalCelulasAtuais;
-  
   for (let i = 0; i < celulasFaltantes; i++) {
     const divVazia = document.createElement("div");
     divVazia.className = "dia vazio";
     container.appendChild(divVazia);
   }
+
+  atualizarGraficoTendencia(listaDiasRotulos, listaValoresGrafico);
+}
+
+function atualizarGraficoTendencia(rotulos, valores) {
+  const ctx = document.getElementById('graficoTendencia').getContext('2d');
+
+  if (meuGrafico) {
+    meuGrafico.destroy();
+  }
+
+  // PLUGIN 1: Faixas de Risco
+  const pluginFundoColorido = {
+    id: 'fundoColoridoPorRisco',
+    beforeDraw: (chart) => {
+      const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
+      const coresFaixas = [
+        'rgba(127, 127, 127, 0.4)',  // NONE
+        'rgba(217, 235, 211, 0.45)', // TSTM
+        'rgba(255, 242, 204, 0.55)', // SLGT
+        'rgba(255, 153, 0, 0.35)',   // ENH
+        'rgba(255, 77, 77, 0.35)',   // MDT
+        'rgba(244, 176, 244, 0.45)'  // HIGH
+      ];
+      for (let i = 0; i <= 5; i++) {
+        let yTop = y.getPixelForValue(i + 0.5);
+        let yBottom = y.getPixelForValue(i - 0.5);
+        if (i === 5) yTop = top;
+        if (i === 0) yBottom = bottom;
+        ctx.fillStyle = coresFaixas[i];
+        ctx.fillRect(left, yTop, right - left, yBottom - yTop);
+      }
+    }
+  };
+
+  // PLUGIN 2: Linha Vertical de Hoje (Separador de Passado/Futuro)
+  const pluginLinhaHoje = {
+    id: 'linhaVerticalHoje',
+    afterDraw: (chart) => {
+      // Só desenha se estivermos visualizando o mês e ano atual real
+      if (anoAtual === anoReal && mesAtual === mesReal) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        
+        // Localiza a posição X do dia de hoje no gráfico
+        const xPos = x.getPixelForValue(`Dia ${diaReal}`);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]); // Define o padrão pontilhado (5px traço, 5px espaço)
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)'; // Cor da linha
+        ctx.moveTo(xPos, top);
+        ctx.lineTo(xPos, bottom);
+        ctx.stroke();
+
+        // Pequeno rótulo opcional "NOW" no topo da linha
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('TODAY', xPos, top - 5);
+        ctx.restore();
+      }
+    }
+  };
+
+  meuGrafico = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: rotulos,
+      datasets: [{
+        label: 'Risk Level',
+        data: valores,
+        borderColor: '#000000', 
+        borderWidth: 4, 
+        backgroundColor: 'transparent', 
+        tension: 0.15, 
+        pointBackgroundColor: '#000000',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      layout: {
+        padding: { top: 15 } // Espaço extra para o texto "TODAY" não ser cortado
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 5,
+          ticks: {
+            stepSize: 1,
+            callback: function(value) {
+              const siglas = ['NONE', 'TSTM', 'SLGT', 'ENH', 'MDT', 'HIGH'];
+              return siglas[value];
+            },
+            font: { weight: 'bold', family: 'Arial', size: 11 }
+          },
+          grid: { color: '#000000', lineWidth: 1 }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'Arial', size: 10 } }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    },
+    plugins: [pluginFundoColorido, pluginLinhaHoje]
+  });
 }
