@@ -25,6 +25,7 @@ const bancoDeDadosPrevisoes = `
 29-N1
 30-N1
 31-N2
+
 2026(02/12)
 1-N2
 3-N1
@@ -47,6 +48,7 @@ const bancoDeDadosPrevisoes = `
 25-N1
 26-N1
 27-N1
+
 2026(03/12)
 3-T
 4-N1
@@ -70,6 +72,7 @@ const bancoDeDadosPrevisoes = `
 29-N1
 30-N1
 31-N1
+
 2026(04/12)
 3-N1
 4-N1
@@ -108,7 +111,9 @@ const bancoDeDadosPrevisoes = `
 10-T
 11-T
 12-T
-- FUTURO -
+13-T
+14-N1
+15-N1
 16-N2,SVR,HAIL1
 17-N2,SVR,HAIL1
 `;
@@ -122,7 +127,7 @@ const diaReal = hojeReal.getDate();
 let anoAtual = anoReal;
 let mesAtual = mesReal;
 let meuGrafico = null; 
-let meuGraficoAnual = null; // Variável para armazenar o gráfico de barras anual
+let meuGraficoAnual = null; 
 
 document.addEventListener("DOMContentLoaded", function () {
   const selectMes = document.getElementById("select-mes");
@@ -152,7 +157,15 @@ document.addEventListener("DOMContentLoaded", function () {
   renderizarCalendario(anoAtual, mesAtual);
 });
 
-function parsePrevisoesParaMes(ano, mes) {
+// Verifica se uma data específica está no futuro em relação a hoje
+function verificarSeEhFuturo(ano, mes, dia) {
+  const dataCard = new Date(ano, mes, dia);
+  // Zera as horas de hoje para comparar apenas as datas
+  const hojeZerado = new Date(anoReal, mesReal, diaReal);
+  return dataCard > hojeZerado;
+}
+
+function parsePrevisoesParaMes(ano, mes, apenasReal = false) {
   const dadosClimaticos = {};
   const numeroMesFormatado = String(mes + 1).padStart(2, '0');
   const chaveMes = `${ano}(${numeroMesFormatado}/12)`; 
@@ -174,12 +187,18 @@ function parsePrevisoesParaMes(ano, mes) {
     }
 
     if (lendoMesCorreto) {
-      if (linha.startsWith("-")) continue;
+      if (linha.startsWith("-")) continue; // Ignora tags como - FUTURO - se sobrarem
 
       const partes = linha.split("-");
       if (partes.length < 2) continue;
 
-      const diaNum = partes[0].trim();
+      const diaNum = parseInt(partes[0].trim());
+      
+      // SE AUTOMÁTICO: Se o parâmetro "apenasReal" for true e o dia for futuro, o dado é descartado das estatísticas
+      if (apenasReal && verificarSeEhFuturo(ano, mes, diaNum)) {
+        continue;
+      }
+
       const atributos = partes[1].split(",").map(attr => attr.trim().toUpperCase());
 
       let severidade = "";
@@ -201,7 +220,14 @@ function parsePrevisoesParaMes(ano, mes) {
         else if (attr === "TOR2") nivelTor = "alto";
       });
 
-      dadosClimaticos[diaNum] = { severidade, temSvr, nivelHail, nivelTor, valorGrafico };
+      dadosClimaticos[diaNum] = { 
+        severidade, 
+        temSvr, 
+        nivelHail, 
+        nivelTor, 
+        valorGrafico,
+        ehFuturo: verificarSeEhFuturo(ano, mes, diaNum)
+      };
     }
   }
 
@@ -212,7 +238,7 @@ function renderizarCalendario(ano, mes) {
   const container = document.getElementById("container-dias");
   container.innerHTML = ""; 
 
-  const previsoesDoMes = parsePrevisoesParaMes(ano, mes);
+  const previsoesDoMes = parsePrevisoesParaMes(ano, mes, false); 
   const primeiroDiaSemana = new Date(ano, mes, 1).getDay(); 
   const totalDiasNoMes = new Date(ano, mes + 1, 0).getDate(); 
 
@@ -232,6 +258,11 @@ function renderizarCalendario(ano, mes) {
 
     if (ano === anoReal && mes === mesReal && dia === diaReal) {
       divDia.classList.add("hoje");
+    }
+
+    // AUTOMÁTICO: Qualquer dia após a data de hoje ganha a classe escurecida
+    if (verificarSeEhFuturo(ano, mes, dia)) {
+      divDia.classList.add("futuro");
     }
 
     listaDiasRotulos.push(`Dia ${dia}`);
@@ -296,8 +327,6 @@ function renderizarCalendario(ano, mes) {
   }
 
   atualizarGraficoTendencia(listaDiasRotulos, listaValoresGrafico);
-  
-  // GERA OU ATUALIZA O SEGUNDO GRÁFICO BASEADO NO ANO ATUAL
   atualizarGraficoAnualSeveridade(ano);
 }
 
@@ -308,11 +337,12 @@ function atualizarGraficoTendencia(rotulos, valores) {
     meuGrafico.destroy();
   }
 
+  // PLUGIN ATUALIZADO: Escurece as faixas de fundo após a linha do dia atual
   const pluginFundoColorido = {
     id: 'fundoColoridoPorRisco',
     beforeDraw: (chart) => {
-      const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
-      const coresFaixas = [
+      const { ctx, chartArea: { top, bottom, left, right }, scales: { x, y } } = chart;
+      const coresFaixasNormal = [
         'rgba(127, 127, 127, 0.4)',  // NONE
         'rgba(217, 235, 211, 0.45)', // TSTM
         'rgba(255, 242, 204, 0.55)', // SLGT
@@ -320,13 +350,42 @@ function atualizarGraficoTendencia(rotulos, valores) {
         'rgba(255, 77, 77, 0.35)',   // MDT
         'rgba(244, 176, 244, 0.45)'  // HIGH
       ];
+      
+      // Cores mais escuras/opacas para representar o futuro projetado
+      const coresFaixasFuturo = [
+        'rgba(80, 80, 80, 0.6)',      // NONE Futuro
+        'rgba(141, 168, 131, 0.6)',   // TSTM Futuro
+        'rgba(194, 180, 140, 0.7)',   // SLGT Futuro
+        'rgba(179, 107, 0, 0.55)',    // ENH Futuro
+        'rgba(179, 54, 54, 0.55)',    // MDT Futuro
+        'rgba(176, 122, 176, 0.6)'    // HIGH Futuro
+      ];
+
+      // Determina onde dividir o gráfico verticalmente
+      let xDivisor = right; // Por padrão, tudo normal
+      if (anoAtual === anoReal && mesAtual === mesReal) {
+        xDivisor = x.getPixelForValue(`Dia ${diaReal}`);
+      } else if (anoAtual > anoReal || (anoAtual === anoReal && mesAtual > mesReal)) {
+        xDivisor = left; // Se o mês inteiro for no futuro, aplica tudo escuro
+      }
+
       for (let i = 0; i <= 5; i++) {
         let yTop = y.getPixelForValue(i + 0.5);
         let yBottom = y.getPixelForValue(i - 0.5);
         if (i === 5) yTop = top;
         if (i === 0) yBottom = bottom;
-        ctx.fillStyle = coresFaixas[i];
-        ctx.fillRect(left, yTop, right - left, yBottom - yTop);
+
+        // 1. Desenha a parte do Passado/Presente (Lado Esquerdo)
+        if (xDivisor > left) {
+          ctx.fillStyle = coresFaixasNormal[i];
+          ctx.fillRect(left, yTop, xDivisor - left, yBottom - yTop);
+        }
+        
+        // 2. Desenha a parte do Futuro (Lado Direito - Escurecido)
+        if (xDivisor < right) {
+          ctx.fillStyle = coresFaixasFuturo[i];
+          ctx.fillRect(xDivisor, yTop, right - xDivisor, yBottom - yTop);
+        }
       }
     }
   };
@@ -403,7 +462,6 @@ function atualizarGraficoTendencia(rotulos, valores) {
   });
 }
 
-// NOVA FUNÇÃO: Calcula os dados acumulados por mês e desenha o gráfico de barras
 function atualizarGraficoAnualSeveridade(ano) {
   const ctxAnual = document.getElementById('graficoAnualContagem').getContext('2d');
 
@@ -411,14 +469,13 @@ function atualizarGraficoAnualSeveridade(ano) {
     meuGraficoAnual.destroy();
   }
 
-  // Vetores para guardar a contagem final de cada um dos 12 meses
   const contagemN2 = Array(12).fill(0);
   const contagemN3 = Array(12).fill(0);
   const contagemN4 = Array(12).fill(0);
 
-  // Varre os 12 meses do ano processando o banco de dados
   for (let m = 0; m < 12; m++) {
-    const dadosMes = parsePrevisoesParaMes(ano, m);
+    // Passando "true" para computar apenas dados verificados de dias passados/atuais
+    const dadosMes = parsePrevisoesParaMes(ano, m, true); 
     for (const dia in dadosMes) {
       if (dadosMes[dia].severidade === 'nivel-2') contagemN2[m]++;
       if (dadosMes[dia].severidade === 'nivel-3') contagemN3[m]++;
@@ -436,21 +493,21 @@ function atualizarGraficoAnualSeveridade(ano) {
         {
           label: 'ENH (Nível 2)',
           data: contagemN2,
-          backgroundColor: '#ff9900', // Laranja oficial
+          backgroundColor: '#ff9900', 
           borderColor: '#000000',
           borderWidth: 1.5
         },
         {
           label: 'MDT (Nível 3)',
           data: contagemN3,
-          backgroundColor: '#ff4d4d', // Vermelho oficial
+          backgroundColor: '#ff4d4d', 
           borderColor: '#000000',
           borderWidth: 1.5
         },
         {
           label: 'HIGH (Nível 4)',
           data: contagemN4,
-          backgroundColor: '#f4b0f4', // Rosa oficial
+          backgroundColor: '#f4b0f4', 
           borderColor: '#000000',
           borderWidth: 1.5
         }
@@ -459,23 +516,17 @@ function atualizarGraficoAnualSeveridade(ano) {
     options: {
       responsive: true,
       scales: {
-        x: {
-          stacked: true, // Empilha as barras para economizar espaço horizontal
-          grid: { display: false }
-        },
+        x: { stacked: true, grid: { display: false } },
         y: {
-          stacked: true, // Empilha verticalmente para mostrar o total combinado de dias severos
+          stacked: true,
           min: 0,
-          ticks: {
-            stepSize: 1, // Exibe contagem de 1 em 1 dia inteiro
-            font: { weight: 'bold' }
-          },
+          ticks: { stepSize: 1, font: { weight: 'bold' } },
           grid: { color: '#cccccc' }
         }
       },
       plugins: {
         legend: {
-          display: true, // Ativa a legenda para sabermos qual cor representa qual nível
+          display: true, 
           position: 'top',
           labels: { font: { family: 'Arial', size: 11, weight: 'bold' } }
         }
