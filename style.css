@@ -182,3 +182,8 @@ body {
     padding-top: 20px;
   }
 }
+/* Efeito escurinho e opaco para os blocos de previsão futuros */
+.dia.futuro {
+  filter: brightness(0.9) contrast(1.0);
+  opacity: 0.8;
+}
