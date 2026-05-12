@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SVR Calendar - BETA</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -27,7 +28,6 @@
           <option value="10">November</option>
           <option value="11">December</option>
         </select>
-
         <select id="select-ano" class="dropdown-nav"></select>
       </div>
       
@@ -39,9 +39,14 @@
         <div class="dia-semana header">Thursday</div>
         <div class="dia-semana header">Friday</div>
         <div class="dia-semana header">Saturday</div>
-
         <div id="container-dias" style="display: contents;"></div>
       </div>
+
+      <div class="grafico-container" style="margin-top: 40px; background: white; padding: 15px; border: 2px solid #000;">
+        <h3 style="margin-top: 0; font-family: Arial, sans-serif;">CONVECTIVE OUTLOOK TREND (MAX/DAY)</h3>
+        <canvas id="graficoTendencia"></canvas>
+      </div>
+
     </div>
 
     <div class="legenda-secao">
